@@ -37,17 +37,15 @@ export const htmlMain = (
 };
 
 // todo lint idea: replace BorderRadius.only(topleft: 8, topRight: 8) with BorderRadius.horizontal(8)
-const htmlWidgetGenerator = (
-  sceneNode: ReadonlyArray<SceneNode>,
-  isJsx: boolean
-): string => {
+const htmlWidgetGenerator = (sceneNode: ReadonlyArray<SceneNode>, isJsx: boolean): string => {
   let comp = "";
   // filter non visible nodes. This is necessary at this step because conversion already happened.
   const visibleSceneNode = sceneNode.filter((d) => d.visible);
   visibleSceneNode.forEach((node, index) => {
-    // if (node.isAsset || ("isMask" in node && node.isMask === true)) {
-    //   comp += htmlAsset(node, isJsx);
-    // }
+    if (node.isAsset || ("isMask" in node && node.isMask === true)) {
+      comp += htmlAsset(node, isJsx);
+    }
+    // console.log("NODETY3PE", node);
 
     switch (node.type) {
       case "RECTANGLE":
@@ -59,8 +57,9 @@ const htmlWidgetGenerator = (
         break;
       case "FRAME":
       case "COMPONENT":
-      case "INSTANCE":
       case "COMPONENT_SET":
+      case "INSTANCE":
+        console.log("NODETY3PE", node);
         comp += htmlFrame(node, isJsx);
         break;
       case "SECTION":
@@ -93,11 +92,10 @@ const htmlGroup = (node: GroupNode, isJsx: boolean = false): string => {
   // if (vectorIfExists) return vectorIfExists;
 
   // this needs to be called after CustomNode because widthHeight depends on it
-  const builder = new HtmlDefaultBuilder(
+  const builder = new HtmlDefaultBuilder(node, showLayerName, isJsx).commonPositionStyles(
     node,
-    showLayerName,
-    isJsx
-  ).commonPositionStyles(node, localSettings.optimizeLayout);
+    localSettings.optimizeLayout
+  );
 
   if (builder.styles) {
     const attr = builder.build();
@@ -132,15 +130,9 @@ export const htmlText = (node: TextNode, isJsx: boolean): string => {
   return `\n<div${layoutBuilder.build()}>${content}</div>`;
 };
 
-const htmlFrame = (
-  node: SceneNode & BaseFrameMixin,
-  isJsx: boolean = false
-): string => {
+const htmlFrame = (node: SceneNode & BaseFrameMixin, isJsx: boolean = false): string => {
   const childrenStr = htmlWidgetGenerator(
-    commonSortChildrenWhenInferredAutoLayout(
-      node,
-      localSettings.optimizeLayout
-    ),
+    commonSortChildrenWhenInferredAutoLayout(node, localSettings.optimizeLayout),
     isJsx
   );
 
@@ -149,11 +141,7 @@ const htmlFrame = (
     return htmlContainer(node, childrenStr, rowColumn, isJsx);
   } else {
     if (localSettings.optimizeLayout && node.inferredAutoLayout !== null) {
-      const rowColumn = htmlAutoLayoutProps(
-        node,
-        node.inferredAutoLayout,
-        isJsx
-      );
+      const rowColumn = htmlAutoLayoutProps(node, node.inferredAutoLayout, isJsx);
       return htmlContainer(node, childrenStr, rowColumn, isJsx);
     }
 
@@ -161,6 +149,78 @@ const htmlFrame = (
     // children needs to be absolute
     return htmlContainer(node, childrenStr, [], isJsx);
   }
+};
+
+const htmlInstance = (node: InstanceNode, isJsx: boolean = false): string => {
+  const componentName = node.mainComponent
+    ? node.mainComponent.name.replace(/\s+/g, "")
+    : "UnknownComponent";
+
+  // Build props
+  let props: string[] = [];
+
+  // Get component property definitions
+  if (node.mainComponent && node.mainComponent.componentPropertyDefinitions) {
+    const propertyDefinitions = node.mainComponent.componentPropertyDefinitions;
+    const componentProperties = node.componentProperties;
+
+    for (const [propertyId, propertyDefinition] of Object.entries(propertyDefinitions)) {
+      const propertyName = propertyDefinition.name.replace(/\s+/g, "");
+      let propertyValue: any;
+
+      // Get the overridden value from componentProperties
+      if (componentProperties && componentProperties[propertyId]) {
+        const propertyOverride = componentProperties[propertyId];
+
+        if (propertyOverride?.type === "VARIANT") {
+          // The property is bound to a variable
+          const variableId = propertyOverride.id;
+          const variableName = getVariableNameById(variableId);
+
+          if (isJsx) {
+            props.push(`${propertyName}={${variableName}}`);
+          } else {
+            props.push(`${propertyName}="${variableName}"`);
+          }
+        } else {
+          // The property has a value
+          propertyValue = propertyOverride.value;
+
+          if (isJsx) {
+            props.push(`${propertyName}={${JSON.stringify(propertyValue)}}`);
+          } else {
+            props.push(`${propertyName}="${propertyValue}"`);
+          }
+        }
+      } else {
+        // Use default value from the property definition
+        propertyValue = propertyDefinition.defaultValue;
+
+        if (isJsx) {
+          props.push(`${propertyName}={${JSON.stringify(propertyValue)}}`);
+        } else {
+          props.push(`${propertyName}="${propertyValue}"`);
+        }
+      }
+    }
+  }
+
+  const propsString = props.length > 0 ? " " + props.join(" ") : "";
+
+  // Get the children
+  const childrenStr = htmlWidgetGenerator(node.children, isJsx);
+
+  if (childrenStr) {
+    return `\n<${componentName}${propsString}>${indentString(childrenStr)}\n</${componentName}>`;
+  } else {
+    return `\n<${componentName}${propsString} />`;
+  }
+};
+
+// Placeholder function to get variable name by ID
+const getVariableNameById = (variableId: string): string => {
+  // Implement this function based on your context
+  return `variable_${variableId}`;
 };
 
 export const htmlAsset = (node: SceneNode, isJsx: boolean = false): string => {
@@ -176,9 +236,7 @@ export const htmlAsset = (node: SceneNode, isJsx: boolean = false): string => {
   let src = "";
   if (retrieveTopFill(node.fills)?.type === "IMAGE") {
     tag = "img";
-    src = ` src="https://via.placeholder.com/${node.width.toFixed(
-      0
-    )}x${node.height.toFixed(0)}"`;
+    src = ` src="https://via.placeholder.com/${node.width.toFixed(0)}x${node.height.toFixed(0)}"`;
   }
 
   if (tag === "div") {
@@ -191,12 +249,7 @@ export const htmlAsset = (node: SceneNode, isJsx: boolean = false): string => {
 // properties named propSomething always take care of ","
 // sometimes a property might not exist, so it doesn't add ","
 export const htmlContainer = (
-  node: SceneNode &
-    SceneNodeMixin &
-    BlendMixin &
-    LayoutMixin &
-    GeometryMixin &
-    MinimalBlendMixin,
+  node: SceneNode & SceneNodeMixin & BlendMixin & LayoutMixin & GeometryMixin & MinimalBlendMixin,
   children: string,
   additionalStyles: string[] = [],
   isJsx: boolean
@@ -226,9 +279,7 @@ export const htmlContainer = (
           formatWithJSX(
             "background-image",
             isJsx,
-            `url(https://via.placeholder.com/${node.width.toFixed(
-              0
-            )}x${node.height.toFixed(0)})`
+            `url(https://via.placeholder.com/${node.width.toFixed(0)}x${node.height.toFixed(0)})`
           )
         );
       }
@@ -238,10 +289,13 @@ export const htmlContainer = (
 
     if (children) {
       return `\n<${tag}${build}${src}>${indentString(children)}\n</${tag}>`;
+      return "";
     } else if (selfClosingTags.includes(tag) || isJsx) {
       return `\n<${tag}${build}${src} />`;
+      return "";
     } else {
       return `\n<${tag}${build}${src}></${tag}>`;
+      return "";
     }
   }
 
