@@ -44,8 +44,7 @@ const getUserSettings = async () => {
       if (
         isKeyOfPluginSettings(key) &&
         key in possiblePluginSrcSettings &&
-        typeof possiblePluginSrcSettings[key] ===
-          typeof defaultPluginSettings[key]
+        typeof possiblePluginSrcSettings[key] === typeof defaultPluginSettings[key]
       ) {
         validSettings[key] = possiblePluginSrcSettings[key] as any;
       }
@@ -106,6 +105,7 @@ const codegenMode = async () => {
   await getUserSettings();
 
   figma.codegen.on("generate", ({ language, node }) => {
+    console.log("[NODE]", node);
     const convertedSelection = convertIntoNodes([node], null);
 
     switch (language) {
@@ -113,11 +113,7 @@ const codegenMode = async () => {
         return [
           {
             title: `Code`,
-            code: htmlMain(
-              convertedSelection,
-              { ...userPluginSettings, jsx: false },
-              true
-            ),
+            code: htmlMain(convertedSelection, { ...userPluginSettings, jsx: false }, true),
             language: "HTML",
           },
           {
@@ -130,11 +126,7 @@ const codegenMode = async () => {
         return [
           {
             title: `Code`,
-            code: htmlMain(
-              convertedSelection,
-              { ...userPluginSettings, jsx: true },
-              true
-            ),
+            code: htmlMain(convertedSelection, { ...userPluginSettings, jsx: true }, true),
             language: "HTML",
           },
           {
@@ -150,7 +142,7 @@ const codegenMode = async () => {
             title: `Code`,
             code: tailwindMain(convertedSelection, {
               ...userPluginSettings,
-              jsx: language === 'tailwind_jsx',
+              jsx: language === "tailwind_jsx",
             }),
             language: "HTML",
           },
@@ -163,12 +155,12 @@ const codegenMode = async () => {
             title: `Tailwind Colors`,
             code: retrieveGenericSolidUIColors("Tailwind")
               .map((d) => {
-                let str = `${d.hex};`
+                let str = `${d.hex};`;
                 if (d.colorName !== d.hex) {
-                  str += ` // ${d.colorName}`
+                  str += ` // ${d.colorName}`;
                 }
                 if (d.meta) {
-                  str += ` (${d.meta})`
+                  str += ` (${d.meta})`;
                 }
                 return str;
               })

@@ -45,7 +45,7 @@ const htmlWidgetGenerator = (sceneNode: ReadonlyArray<SceneNode>, isJsx: boolean
     if (node.isAsset || ("isMask" in node && node.isMask === true)) {
       comp += htmlAsset(node, isJsx);
     }
-    // console.log("NODETY3PE", node);
+    // console.log("NODE GEN", node);
 
     switch (node.type) {
       case "RECTANGLE":
@@ -58,9 +58,10 @@ const htmlWidgetGenerator = (sceneNode: ReadonlyArray<SceneNode>, isJsx: boolean
       case "FRAME":
       case "COMPONENT":
       case "COMPONENT_SET":
-      case "INSTANCE":
-        console.log("NODETY3PE", node);
         comp += htmlFrame(node, isJsx);
+        break;
+      case "INSTANCE":
+        comp += htmlInstance(node, isJsx);
         break;
       case "SECTION":
         comp += htmlSection(node, isJsx);
@@ -151,70 +152,97 @@ const htmlFrame = (node: SceneNode & BaseFrameMixin, isJsx: boolean = false): st
   }
 };
 
+// const htmlInstance = (node: InstanceNode, isJsx: boolean = false): string => {
+//   const componentName = node.mainComponent
+//     ? node.mainComponent.name.replace(/\s+/g, "")
+//     : "UnknownComponent";
+
+//   // Build props
+//   let props: string[] = [];
+
+//   // Get component property definitions
+//   if (node.mainComponent && node.mainComponent.componentPropertyDefinitions) {
+//     const propertyDefinitions = node.mainComponent.componentPropertyDefinitions;
+//     const componentProperties = node.componentProperties;
+
+//     for (const [propertyId, propertyDefinition] of Object.entries(propertyDefinitions)) {
+//       const propertyName = propertyDefinition.name.replace(/\s+/g, "");
+//       let propertyValue: any;
+
+//       // Get the overridden value from componentProperties
+//       if (componentProperties && componentProperties[propertyId]) {
+//         const propertyOverride = componentProperties[propertyId];
+
+//         if (propertyOverride?.type === "VARIANT") {
+//           // The property is bound to a variable
+//           const variableId = propertyOverride.id;
+//           const variableName = getVariableNameById(variableId);
+
+//           if (isJsx) {
+//             props.push(`${propertyName}={${variableName}}`);
+//           } else {
+//             props.push(`${propertyName}="${variableName}"`);
+//           }
+//         } else {
+//           // The property has a value
+//           propertyValue = propertyOverride.value;
+
+//           if (isJsx) {
+//             props.push(`${propertyName}={${JSON.stringify(propertyValue)}}`);
+//           } else {
+//             props.push(`${propertyName}="${propertyValue}"`);
+//           }
+//         }
+//       } else {
+//         // Use default value from the property definition
+//         propertyValue = propertyDefinition.defaultValue;
+
+//         if (isJsx) {
+//           props.push(`${propertyName}={${JSON.stringify(propertyValue)}}`);
+//         } else {
+//           props.push(`${propertyName}="${propertyValue}"`);
+//         }
+//       }
+//     }
+//   }
+
+//   const propsString = props.length > 0 ? " " + props.join(" ") : "";
+
+//   // Get the children
+//   const childrenStr = htmlWidgetGenerator(node.children, isJsx);
+
+//   if (childrenStr) {
+//     return `\n<${componentName}${propsString}>${indentString(childrenStr)}\n</${componentName}>`;
+//   } else {
+//     return `\n<${componentName}${propsString} />`;
+//   }
+// };
+
 const htmlInstance = (node: InstanceNode, isJsx: boolean = false): string => {
-  const componentName = node.mainComponent
-    ? node.mainComponent.name.replace(/\s+/g, "")
-    : "UnknownComponent";
+  const componentName = node.name ? node.name.replace(/\s+/g, "") : "UnknownComponent";
 
   // Build props
   let props: string[] = [];
+  let propsString = "";
+  if (node.variantProperties) {
+    for (const [key, value] of Object.entries(node.variantProperties)) {
+      // 속성 이름과 값을 소문자로 변환하고 공백을 제거합니다.
+      const propName = key.replace(/\s+/g, "").toLowerCase();
+      const propValue = value.replace(/\s+/g, "").toLowerCase();
 
-  // Get component property definitions
-  if (node.mainComponent && node.mainComponent.componentPropertyDefinitions) {
-    const propertyDefinitions = node.mainComponent.componentPropertyDefinitions;
-    const componentProperties = node.componentProperties;
-
-    for (const [propertyId, propertyDefinition] of Object.entries(propertyDefinitions)) {
-      const propertyName = propertyDefinition.name.replace(/\s+/g, "");
-      let propertyValue: any;
-
-      // Get the overridden value from componentProperties
-      if (componentProperties && componentProperties[propertyId]) {
-        const propertyOverride = componentProperties[propertyId];
-
-        if (propertyOverride?.type === "VARIANT") {
-          // The property is bound to a variable
-          const variableId = propertyOverride.id;
-          const variableName = getVariableNameById(variableId);
-
-          if (isJsx) {
-            props.push(`${propertyName}={${variableName}}`);
-          } else {
-            props.push(`${propertyName}="${variableName}"`);
-          }
-        } else {
-          // The property has a value
-          propertyValue = propertyOverride.value;
-
-          if (isJsx) {
-            props.push(`${propertyName}={${JSON.stringify(propertyValue)}}`);
-          } else {
-            props.push(`${propertyName}="${propertyValue}"`);
-          }
-        }
-      } else {
-        // Use default value from the property definition
-        propertyValue = propertyDefinition.defaultValue;
-
-        if (isJsx) {
-          props.push(`${propertyName}={${JSON.stringify(propertyValue)}}`);
-        } else {
-          props.push(`${propertyName}="${propertyValue}"`);
-        }
-      }
+      // JSX 형식인지 여부에 따라 따옴표를 결정합니다.
+      const quote = isJsx ? "{" : "'";
+      const quoteEnd = isJsx ? "}" : "'";
+      props.push(`${propName}=${quote}${propValue}${quoteEnd}`);
     }
   }
 
-  const propsString = props.length > 0 ? " " + props.join(" ") : "";
-
-  // Get the children
-  const childrenStr = htmlWidgetGenerator(node.children, isJsx);
-
-  if (childrenStr) {
-    return `\n<${componentName}${propsString}>${indentString(childrenStr)}\n</${componentName}>`;
-  } else {
-    return `\n<${componentName}${propsString} />`;
+  // Props 배열을 문자열로 변환하여 propsString에 저장합니다.
+  if (props.length > 0) {
+    propsString = " " + props.join(" ");
   }
+
+  return `\n<${componentName}${propsString} />`;
 };
 
 // Placeholder function to get variable name by ID
@@ -302,10 +330,7 @@ export const htmlContainer = (
   return children;
 };
 
-export const htmlSection = (
-  node: SectionNode,
-  isJsx: boolean = false
-): string => {
+export const htmlSection = (node: SectionNode, isJsx: boolean = false): string => {
   const childrenStr = htmlWidgetGenerator(node.children, isJsx);
   const builder = new HtmlDefaultBuilder(node, showLayerName, isJsx)
     .size(node, localSettings.optimizeLayout)
@@ -329,10 +354,7 @@ export const htmlLine = (node: LineNode, isJsx: boolean): string => {
 
 export const htmlCodeGenTextStyles = (isJsx: boolean) => {
   const result = previousExecutionCache
-    .map(
-      (style) =>
-        `// ${style.text}\n${style.style.split(isJsx ? "," : ";").join(";\n")}`
-    )
+    .map((style) => `// ${style.text}\n${style.style.split(isJsx ? "," : ";").join(";\n")}`)
     .join("\n---\n");
 
   if (!result) {

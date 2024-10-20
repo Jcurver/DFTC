@@ -16,7 +16,7 @@ export const cloneNode = <T extends BaseNode>(node: T): T => {
       prop !== "verticalPadding" &&
       prop !== "mainComponent" &&
       prop !== "masterComponent" &&
-      prop !== "variantProperties" &&
+      // prop !== "variantProperties" &&s
       prop !== "componentPropertyDefinitions" &&
       prop !== "exposedInstances" &&
       prop !== "componentProperties" &&
@@ -32,24 +32,14 @@ export const cloneNode = <T extends BaseNode>(node: T): T => {
 export const frameNodeTo = (
   node: FrameNode | InstanceNode | ComponentNode | ComponentSetNode,
   parent: ParentType
-):
-  | RectangleNode
-  | FrameNode
-  | InstanceNode
-  | ComponentNode
-  | GroupNode
-  | ComponentSetNode => {
+): RectangleNode | FrameNode | InstanceNode | ComponentNode | GroupNode | ComponentSetNode => {
   if (node.children.length === 0) {
     // if it has no children, convert frame to rectangle
     return frameToRectangleNode(node, parent);
   }
   const clone = standardClone(node, parent);
 
-  overrideReadonlyProperty(
-    clone,
-    "children",
-    convertIntoNodes(node.children, clone)
-  );
+  overrideReadonlyProperty(clone, "children", convertIntoNodes(node.children, clone));
   return convertNodesOnRectangle(clone);
 };
 
@@ -129,11 +119,7 @@ export const convertIntoNodes = (
 
         const clone = standardClone(node, parent);
 
-        overrideReadonlyProperty(
-          clone,
-          "children",
-          convertIntoNodes(node.children, clone)
-        );
+        overrideReadonlyProperty(clone, "children", convertIntoNodes(node.children, clone));
 
         // try to find big rect and regardless of that result, also try to convert to autolayout.
         // There is a big chance this will be returned as a Frame
@@ -235,9 +221,7 @@ const iconToRectangle = (
   return null;
 };
 
-export function notEmpty<TValue>(
-  value: TValue | null | undefined
-): value is TValue {
+export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined;
 }
 
@@ -293,10 +277,7 @@ export const getBoundingRect = (
 
   // fill in
   for (let i = 0; i <= 3; i++) {
-    const a = applyMatrixToPoint(matrix, [
-      XY.x[i] * halfWidth,
-      XY.y[i] * halfHeight,
-    ]);
+    const a = applyMatrixToPoint(matrix, [XY.x[i] * halfWidth, XY.y[i] * halfHeight]);
     XY.x[i] = a[0];
     XY.y[i] = a[1];
   }
