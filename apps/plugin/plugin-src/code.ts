@@ -105,7 +105,6 @@ const codegenMode = async () => {
   await getUserSettings();
 
   figma.codegen.on("generate", ({ language, node }) => {
-    console.log("[NODE]", node);
     const convertedSelection = convertIntoNodes([node], null);
 
     switch (language) {
