@@ -32,7 +32,6 @@ export const run = (settings: PluginSettings) => {
     });
     return;
   }
-  console.log("figma.currentPage.selection", figma.currentPage.selection);
 
   const convertedSelection = convertIntoNodes(figma.currentPage.selection, null);
   let result = "";

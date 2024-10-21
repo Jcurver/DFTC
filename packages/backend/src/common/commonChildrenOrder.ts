@@ -18,11 +18,11 @@ export const commonSortChildrenWhenInferredAutoLayout = (
       // NONE is a bug from Figma.
       case "NONE":
       case "VERTICAL":
-        console.log(
-          "ordering",
-          children.map((c) => c.name),
-          children.sort((a, b) => a.y - b.y).map((c) => c.name)
-        );
+        // console.log(
+        //   "ordering",
+        //   children.map((c) => c.name),
+        //   children.sort((a, b) => a.y - b.y).map((c) => c.name)
+        // );
         return children.sort((a, b) => a.y - b.y);
     }
   }

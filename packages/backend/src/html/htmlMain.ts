@@ -45,7 +45,6 @@ const htmlWidgetGenerator = (sceneNode: ReadonlyArray<SceneNode>, isJsx: boolean
     if (node.isAsset || ("isMask" in node && node.isMask === true)) {
       comp += htmlAsset(node, isJsx);
     }
-    // console.log("NODE GEN", node);
 
     switch (node.type) {
       case "RECTANGLE":
